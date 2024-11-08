@@ -1,7 +1,11 @@
 import { mockTeamJoinEvent } from './mockTeamJoinEvent';
 import { EnvelopedEvent, ReceiverEvent, SlackEventMiddlewareArgs, TeamJoinEvent } from "@slack/bolt";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const noopVoid = (..._args: any[]) => Promise.resolve();
+// biome-ignore lint/suspicious/noExplicitAny: module overrides can be anything
+export type Override = Record<string, Record<string, any>>;
+
 
 interface DummyTeamJoinOverrides {
     event?: TeamJoinEvent;
@@ -55,4 +59,28 @@ export function createDummyTeamJoinEventMiddlewareArgs(
       },
       ack: () => Promise.resolve(),
     };
+  }
+
+  export function mergeOverrides(...overrides: Override[]): Override {
+    let currentOverrides: Override = {};
+    for (const override of overrides) {
+      currentOverrides = mergeObjProperties(currentOverrides, override);
+    }
+    return currentOverrides;
+  }
+  
+  function mergeObjProperties(first: Override, second: Override): Override {
+    const merged: Override = {};
+    const props = Object.keys(first).concat(Object.keys(second));
+    for (const prop of props) {
+      if (second[prop] === undefined && first[prop] !== undefined) {
+        merged[prop] = first[prop];
+      } else if (first[prop] === undefined && second[prop] !== undefined) {
+        merged[prop] = second[prop];
+      } else {
+        // second always overwrites the first
+        merged[prop] = { ...first[prop], ...second[prop] };
+      }
+    }
+    return merged;
   }
